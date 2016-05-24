@@ -28,7 +28,7 @@ def playTurn(current_state, played):
     else:
         return current_state, played
 
-def playGame(state, verbose, c):
+def playGame(state, verbose, c): #FAUX, A ne pas prendre en compte
     played = []
     game = []
     while state[0].count(1) != c and state[0].count(2) != c and state[0] != [] and state[1] != [] and [state,played] not in game:
