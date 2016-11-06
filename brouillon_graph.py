@@ -68,10 +68,8 @@ def partieAleatoire(decks):
     partie = [decksString(decks)]
     enJeu = []
     
-    F = nx.Graph()
+    F = nx.DiGraph()
     previous = decksString(decks)
-    
-    size = 500*len(previous)
     
     while decks[0] != [] and decks[1] != []:
         decks, enJeu, gagnant = jouerTour(decks, enJeu)
@@ -81,10 +79,16 @@ def partieAleatoire(decks):
         
         visu = decksString(decks)
         partie += [visu]
-        F.add_edge(visu,previous)
+        F.add_edge(previous,visu)
         previous = visu
         
-    nx.draw_spectral(F,with_labels = True, node_size = size, node_color = "w")
+    pos = nx.spectral_layout(F)
+    plt.figure(facecolor = 'w')
+    plt.axis('off')
+    
+    nx.draw_networkx_edges(F,pos,alpha=0.2)
+    nx.draw_networkx_labels(F,pos)
+    
     plt.show()
     return partie
 
