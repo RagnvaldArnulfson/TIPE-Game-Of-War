@@ -69,6 +69,7 @@ def partieAleatoire(decks):
     enJeu = []
     
     F = nx.DiGraph()
+    
     previous = decksString(decks)
     
     while decks[0] != [] and decks[1] != []:
@@ -86,22 +87,57 @@ def partieAleatoire(decks):
     plt.figure(facecolor = 'w')
     plt.axis('off')
     
-    nx.draw_networkx_edges(F,pos,alpha=0.2)
+    nx.draw_networkx_edges(F,pos,alpha=0.7)
     nx.draw_networkx_labels(F,pos)
     
     plt.show()
+    
     return partie
 
-def partieComplete(decks,partie):
+def recPartieComplete(decks,partie,F):
     partie += deepcopy([decks])
     enJeu = []
+    
+    previous = decksString(decks)
+    
     while decks[0] != [] and decks[1] != []:
         decks, enJeu, gagnant = jouerTour(decks, enJeu)
         strategies = permutationsSansRepetition(enJeu)
+        
         for strat in strategies:
-            enJeu = []
-            decks[gagnant] += strat
-            partieComplete(decks,partie)
-    return partie
+            test = []
+            print(strat)
+            if gagnant == 0:
+                test = deepcopy([decks[0] + strat,decks[1]])
+            elif gagnant == 1:
+                test = deepcopy([decks[0],decks[1] + strat])
+            
+            visu = decksString(test)
+            F.add_edge(previous,visu)
+            
+            if test not in partie: 
+                recPartieComplete(test,partie,F)
+                
+    return None
     
-partieAleatoire([[1,2],[2,1]])
+def partieComplete(decks):
+    F = nx.DiGraph()
+    
+    lol = recPartieComplete(decks,[],F)
+    
+    plt.figure(facecolor = 'w')
+    plt.axis('off')
+    
+    pos = nx.spring_layout(F)
+    plt.figure(facecolor = 'w')
+    plt.axis('off')
+    
+    nx.draw_networkx_edges(F,pos,alpha=0.5)
+    nx.draw_networkx_labels(F,pos)
+    
+    plt.show()
+    
+    return lol
+    
+#partieAleatoire([[1,2],[2,1]])
+partieComplete([[1,2],[2,1]])
