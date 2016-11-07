@@ -106,7 +106,6 @@ def recPartieComplete(decks,partie,F):
         
         for strat in strategies:
             test = []
-            print(strat)
             if gagnant == 0:
                 test = deepcopy([decks[0] + strat,decks[1]])
             elif gagnant == 1:
@@ -125,9 +124,6 @@ def partieComplete(decks):
     
     lol = recPartieComplete(decks,[],F)
     
-    plt.figure(facecolor = 'w')
-    plt.axis('off')
-    
     pos = nx.spring_layout(F)
     plt.figure(facecolor = 'w')
     plt.axis('off')
@@ -140,4 +136,4 @@ def partieComplete(decks):
     return lol
     
 #partieAleatoire([[1,2],[2,1]])
-partieComplete([[1,2],[2,1]])
+partieComplete([[1,2,3],[2,1,3]])
