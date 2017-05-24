@@ -1,0 +1,298 @@
+# -*- coding: cp1252 -*-
+#
+import networkx as nx
+import random as r
+import matplotlib.pyplot as plt
+from copy import deepcopy
+import scipy.stats as stats
+import sys
+import math as m
+from itertools import groupby
+import operator
+from collections import Counter
+from functools import reduce
+sys.setrecursionlimit(10000) 
+
+
+jeu52Cartes = [(i%13)+1 for i in range(13*4)]
+#poids du jeu : 364
+#poids minimal d'un paquet (26 cartes tirÃ©es dedans) : 98
+#poids maximal : 266 (=364-98)
+
+jeu32Cartes = [(i%8)+1 for i in range(8*4)]
+#poids du jeu : 144
+#poids minimal d'un paquet (16 cartes tirÃ©es dedans) : 40
+# maximal : 104 (=144-40)
+
+
+def genererDistribution(jeuComplet,poidsSouhaite,aleatoire = False):
+    
+    jeuComplet = sorted(jeuComplet) #ON TRIE LE JEU DONNE (obligatoire pour genererPaquet)
+    poidsTotal = sum(jeuComplet)
+
+    jeuContraire = False
+
+    if poidsSouhaite > poidsTotal//2:
+        poidsSouhaite = poidsTotal-poidsSouhaite
+        jeuContraire = True
+    
+    paquet1 = genererPaquet(jeuComplet,len(jeuComplet)//2,poidsSouhaite,aleatoire)
+    
+    paquet2 = jeuComplet[:]
+    for carte in paquet1:
+        paquet2.remove(carte)
+    
+    if aleatoire:
+        r.shuffle(paquet2)
+    
+    return [paquet2,paquet1] if jeuContraire else [paquet1,paquet2]
+    
+def genererPaquet(cartesDispo,nombreDeCartesSouhaitees,poidsSouhaite,aleatoire = False,paquetActuel = []):
+    
+    nombreDeCartesDispo = len(cartesDispo)
+    nombreDeCartesActuel = len(paquetActuel)
+    poidsActuel = sum(paquetActuel)
+    nombreDeCartesATirer = nombreDeCartesSouhaitees-nombreDeCartesActuel
+
+    poidsMin = poidsActuel + sum(cartesDispo[:nombreDeCartesATirer])
+    poidsMax = poidsActuel + sum(cartesDispo[(nombreDeCartesDispo-nombreDeCartesATirer):])
+    
+    if nombreDeCartesActuel == nombreDeCartesSouhaitees and poidsActuel == poidsSouhaite:
+        return paquetActuel
+    elif nombreDeCartesActuel == nombreDeCartesSouhaitees \
+        or poidsMin > poidsSouhaite or poidsMax < poidsSouhaite:
+        return []
+    
+    
+    dejaVu = []
+    
+    piocheAlea = cartesDispo[:]
+    if aleatoire:
+        r.shuffle(piocheAlea)
+
+    for cartePioche in piocheAlea:
+        if cartePioche not in dejaVu:
+            dejaVu.append(cartePioche)
+            nouveauDispo = cartesDispo[:]
+            nouveauDispo.remove(cartePioche)
+            solution = genererPaquet(nouveauDispo,nombreDeCartesSouhaitees,poidsSouhaite,aleatoire,paquetActuel+[cartePioche])
+            if solution != []:
+                return solution
+    
+    return []
+    
+nouveauPaquet = lambda n, c: list((range(1,n+1)))*c
+
+
+
+def melanger(deck):
+    r.shuffle(deck)
+    return deck
+
+def distribuer(deck):
+    n = len(deck)
+    return [deck[:n//2],deck[n//2:]]
+    
+def permutations(l):
+    if len(l) <= 1:
+        return [l]
+    perm = [] 
+    for i in range(len(l)):
+       m = l[i]
+       sous_liste = l[:i] + l[i+1:]
+       for p in permutations(sous_liste):
+           perm.append([m] + p)
+    return perm
+
+def supprimerRepetitions(l):
+    n = []
+    for i in l:
+        if i not in n:
+            n.append(i)
+    return n
+    
+def permutationsSansRepetition(l):
+    if len(l) <= 1:
+        return [l]
+    perm = []
+    dejaVus = []
+    for i in range(len(l)):
+        if l[i] not in dejaVus:
+            m = l[i]
+            dejaVus.append(l[i])
+            sous_liste = l[:i] + l[i+1:]
+            for p in permutationsSansRepetition(sous_liste):
+                perm.append([m] + p)
+    return perm
+
+def jouerTour(decks, enJeu):
+    joue = [0,0]
+    while joue[0] == joue[1] and joue != [-1,-1]:
+        for i in range(2):
+            if decks[i] != []:
+                joue[i] = decks[i][0]         
+                decks[i].pop(0)
+            else:
+                joue[i] = -1
+        enJeu += filter(lambda a : a >= 0, joue)
+    if joue != [-1,-1]:
+        return decks,enJeu,joue.index(max(joue))
+    else:
+        return [[],[]],[],2 #EGALITE
+    
+def decksString(decks):
+    return '.'.join(map(str,decks[0]))+" ; "+'.'.join(map(str,decks[1]))
+
+def partieAleatoire(decks):
+    partie = [decksString(decks)]
+    enJeu = []
+    
+    #F = nx.DiGraph()
+    
+    previous = decksString(decks)
+    
+    while decks[0] != [] and decks[1] != []:
+        decks, enJeu, gagnant = jouerTour(decks, enJeu)
+        strategies = permutationsSansRepetition(enJeu)
+        enJeu = []
+        decks[gagnant] += strategies[r.randint(0,len(strategies)-1)]
+        
+        visu = decksString(decks)
+        partie += [visu]
+        #F.add_edge(previous,visu)
+        previous = visu
+        
+    #pos = nx.spectral_layout(F)
+    plt.figure(facecolor = 'w')
+    plt.axis('off')
+    
+    #nx.draw_networkx_edges(F,pos,alpha=0.7)
+    #nx.draw_networkx_labels(F,pos)
+    
+    plt.show()
+    
+    return partie
+
+def recPartieComplete(decks,partie,verbose=False):
+    partie.append(decksString(decks))
+    
+    #previous = decksString(decks)
+    
+    decks, enJeu, gagnant = jouerTour(decks, [])
+    strategies = permutationsSansRepetition(enJeu)
+    res = []
+    
+    for strat in strategies:
+        nouveauDeck = []
+        if gagnant == 0:
+            nouveauDeck = deepcopy([decks[0] + strat,decks[1]])
+        elif gagnant == 1:
+            nouveauDeck = deepcopy([decks[0],decks[1] + strat])
+            
+        if gagnant == 0 and decks[1]==[]:
+            #graphePartie.add_edge(previous,"P1")
+            return "P1"
+        elif gagnant == 1 and decks[0]==[]:
+            #graphePartie.add_edge(previous,"P2")
+            return "P2"
+        elif gagnant == 2:
+            #graphePartie.add_edge(previous,"E")
+            return "E"
+        else:
+            visu = decksString(nouveauDeck)
+            #graphePartie.add_edge(previous,visu)
+            
+            appelRec = "BOUCL"
+            
+            if visu not in partie:
+                appelRec = recPartieComplete(nouveauDeck,partie,verbose)
+                res += [appelRec]
+            else:
+                res += ["BOUCL"]
+    
+
+    
+    if "P1" in res and gagnant==0:
+        return "P1"
+    elif "P2" in res and gagnant==1:
+        return "P2"
+    elif "E" in res:
+        return "E"
+    elif "BOUCL" in res:
+        return "BOUCL"
+    elif gagnant==0: #DANS TOUS LES CAS PERDANT
+        return "P2"
+        
+    return "P1"
+                     
+    
+def partieComplete(decks,findSub=False,verbose=False,draw=False):
+    #F = nx.DiGraph()
+    
+    print(recPartieComplete(decks,[],findSub,verbose))
+    if draw:
+        #pos = nx.spring_layout(F)
+        plt.figure(facecolor = 'w')
+        plt.axis('off')
+        
+        #nx.draw_networkx_edges(F,pos,alpha=0.5)
+        #nx.draw_networkx_labels(F,pos)
+        
+        plt.show()
+    
+    return None
+    #return F
+    
+
+
+def cardPermutations(l):
+    num = m.factorial(len(l))
+    mults = Counter(l).values()
+    den = reduce(operator.mul, (m.factorial(v) for v in mults), 1)
+    return num // den
+
+def permutationsMajSansRepetitionTest(l,maj = -1,verbose=False):
+    if len(l) <= 1:
+        return [l]
+    perm = []
+    dejaVus = []
+    n = len(l)//2
+    UnJoueurGagne = 0
+    Egalite = 0
+    Boucle = 0
+    for i in range(len(l)):
+        if l[i] not in dejaVus:
+            m = l[i]
+            dejaVus.append(l[i])
+            sous_liste = l[:i] + l[i+1:]
+            for p in permutationsMajSansRepetitionTest(sous_liste,-1):
+                if maj==-1 or len(perm)<maj:
+                    perm.append([m] + p)
+                    if maj!=-1:
+                        decks = [perm[len(perm)-1][:n],perm[len(perm)-1][n:]]
+                        visu = decksString(decks)
+
+                        resultat = recPartieComplete(decks,[],verbose)
+                                    
+                        if resultat == "E":
+                            Egalite += 1
+                        elif resultat == "BOUCL":
+                            Boucle += 1
+                        else:
+                            UnJoueurGagne += 1
+                            
+                        if verbose:
+                            print(visu +" : " + resultat)
+                        
+    return perm if maj==-1 else (UnJoueurGagne*2,Egalite*2,Boucle*2)
+    
+    
+def toutesDistributions(deck,verbose=False):
+    permCard = cardPermutations(deck)
+    
+    l = permutationsMajSansRepetitionTest(deck,permCard//2,verbose)
+    return l
+
+
+#partieComplete([[1,2],[2,1]],True,True)
+print(toutesDistributions(nouveauPaquet(8,1),True))
