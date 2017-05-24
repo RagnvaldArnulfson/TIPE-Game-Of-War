@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 import scipy.stats as stats
 import sys
+import math as m
+from itertools import groupby
+import operator
+from collections import Counter
+from functools import reduce
 sys.setrecursionlimit(10000) 
 
 
@@ -167,7 +172,7 @@ def partieAleatoire(decks):
     
     return partie
 
-def recPartieComplete(decks,partie,graphePartie):
+def recPartieComplete(decks,partie,graphePartie,verbose=False):
     partie += deepcopy([decks])
     
     previous = decksString(decks)
@@ -204,7 +209,7 @@ def recPartieComplete(decks,partie,graphePartie):
             else:
                 res += ["BOUCL"]
     
-            if len(nouveauDeck[0]) == len(nouveauDeck[1]):
+            if len(nouveauDeck[0]) == len(nouveauDeck[1]) and verbose:
                 test = ""
                 if appelRec=="P1":
                     test = "P1"
@@ -246,7 +251,58 @@ def partieComplete(decks,draw):
         plt.show()
     
     return F
+    
 
-a = distribuer(melanger(nouveauPaquet(8,4)))
-print(a)
-partieComplete(a,False)
+
+def cardPermutations(l):
+    num = m.factorial(len(l))
+    mults = Counter(l).values()
+    den = reduce(operator.mul, (m.factorial(v) for v in mults), 1)
+    return num // den
+
+def permutationsMajSansRepetitionTest(l,maj = -1,verbose=False):
+    if len(l) <= 1:
+        return [l]
+    perm = []
+    dejaVus = []
+    n = len(l)//2
+    dejaTest = []
+    UnJoueurGagne = 0
+    Egalite = 0
+    Boucle = 0
+    for i in range(len(l)):
+        if l[i] not in dejaVus:
+            m = l[i]
+            dejaVus.append(l[i])
+            sous_liste = l[:i] + l[i+1:]
+            for p in permutationsMajSansRepetitionTest(sous_liste,-1):
+                if maj==-1 or len(perm)<maj:
+                    perm.append([m] + p)
+                    if maj!=-1:
+                        decks = [perm[len(perm)-1][:n],perm[len(perm)-1][n:]]
+                        if decks not in dejaTest:
+                            dejaTest.append(decks)
+                            F = nx.DiGraph()
+                            visu = decksString(decks)
+                            resultat = recPartieComplete(decks,[],F)
+                            if resultat == "E":
+                                Egalite += 1
+                            elif resultat == "BOUCL":
+                                Boucle += 1
+                            else:
+                                UnJoueurGagne += 1
+                            if verbose:
+                                print(visu +" : " + resultat)
+                        
+    return perm if maj==-1 else (UnJoueurGagne*2,Egalite*2,Boucle*2)
+    
+    
+def toutesDistributions(deck,verbose=False):
+    permCard = cardPermutations(deck)
+    
+    l = permutationsMajSansRepetitionTest(deck,permCard//2,verbose)
+    return l
+
+
+
+print(toutesDistributions(nouveauPaquet(2,6)))
